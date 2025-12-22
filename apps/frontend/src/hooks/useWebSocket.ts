@@ -31,6 +31,20 @@ export function useWebSocket({
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
+  // Use refs for callbacks to prevent reconnection when they change
+  const onMessageRef = useRef(onMessage)
+  const onOpenRef = useRef(onOpen)
+  const onCloseRef = useRef(onClose)
+  const onErrorRef = useRef(onError)
+
+  // Update refs when callbacks change
+  useEffect(() => {
+    onMessageRef.current = onMessage
+    onOpenRef.current = onOpen
+    onCloseRef.current = onClose
+    onErrorRef.current = onError
+  }, [onMessage, onOpen, onClose, onError])
+
   useEffect(() => {
     let isMounted = true
 
@@ -44,7 +58,7 @@ export function useWebSocket({
         ws.onopen = () => {
           console.log('WebSocket connected')
           setIsConnected(true)
-          onOpen?.()
+          onOpenRef.current?.()
         }
 
         ws.onmessage = (event: MessageEvent) => {
@@ -52,7 +66,7 @@ export function useWebSocket({
             const message = JSON.parse(event.data) as WebSocketMessage
             console.log('WebSocket message:', message)
             setLastMessage(message)
-            onMessage?.(message)
+            onMessageRef.current?.(message)
           } catch (err) {
             console.error('Failed to parse WebSocket message:', err)
           }
@@ -61,7 +75,7 @@ export function useWebSocket({
         ws.onclose = () => {
           console.log('WebSocket disconnected')
           setIsConnected(false)
-          onClose?.()
+          onCloseRef.current?.()
 
           if (isMounted) {
             console.log(`Reconnecting in ${reconnectInterval}ms...`)
@@ -71,7 +85,7 @@ export function useWebSocket({
 
         ws.onerror = (error) => {
           console.error('WebSocket error:', error)
-          onError?.(error)
+          onErrorRef.current?.(error)
         }
       } catch (err) {
         console.error('Failed to create WebSocket:', err)
@@ -92,7 +106,7 @@ export function useWebSocket({
         wsRef.current.close()
       }
     }
-  }, [url, onMessage, onOpen, onClose, onError, reconnectInterval])
+  }, [url, reconnectInterval])
 
   return {
     isConnected,
