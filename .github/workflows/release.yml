@@ -1,0 +1,79 @@
+name: Publish Cross-Platform
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  publish:
+    permissions:
+      contents: write
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: "ubuntu-latest"
+            args: "x86_64-unknown-linux-gnu"
+          - platform: "windows-latest"
+            args: "x86_64-pc-windows-msvc"
+          - platform: "macos-latest"
+            args: ""
+          - platform: "macos-latest"
+            args: "x86_64-apple-darwin"
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.args }}
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "apps/backend"
+
+      - name: Install frontend dependencies
+        run: bun install
+
+      - name: Build backend
+        run: |
+          if [ -n "${{ matrix.args }}" ]; then
+            cargo build --release --target ${{ matrix.args }} --manifest-path apps/backend/Cargo.toml
+          else
+            cargo build --release --manifest-path apps/backend/Cargo.toml
+          fi
+
+      - name: Build frontend
+        run: |
+          cd apps/frontend
+          bun run build
+
+      - name: Package artifacts
+        run: |
+          mkdir -p release
+          cp -r apps/backend/target/${{ matrix.args }}/release/* release/
+          cp -r apps/frontend/dist release/
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            tar -czf agent-insights-${{ runner.os }}.tar.gz -C release .
+          else
+            powershell Compress-Archive -Path release\* -DestinationPath agent-insights-${{ runner.os }}.zip
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: agent-insights-${{ runner.os }}
+          path: ${{ runner.os != 'Windows' && 'agent-insights-' + runner.os + '.tar.gz' || 'agent-insights-' + runner.os + '.zip' }}
