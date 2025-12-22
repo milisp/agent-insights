@@ -45,6 +45,7 @@ impl CacheDb {
                 tokens_output INTEGER,
                 tokens_cached INTEGER,
                 tokens_total INTEGER,
+                tool_calls TEXT,
                 cached_at TEXT NOT NULL
             )",
             [],
@@ -60,6 +61,12 @@ impl CacheDb {
             [],
         )?;
 
+        // Migrate existing tables to add tool_calls column if it doesn't exist
+        conn.execute(
+            "ALTER TABLE file_cache ADD COLUMN tool_calls TEXT",
+            [],
+        ).ok(); // Ignore error if column already exists
+
         Ok(())
     }
 
@@ -67,7 +74,7 @@ impl CacheDb {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
             "SELECT agent_type, created_at, modified_at, file_size, session_id,
-                    tokens_input, tokens_output, tokens_cached, tokens_total
+                    tokens_input, tokens_output, tokens_cached, tokens_total, tool_calls
              FROM file_cache
              WHERE file_path = ?1 AND modified_at = ?2"
         )?;
@@ -102,6 +109,10 @@ impl CacheDb {
                 None
             };
 
+            let tool_calls: Vec<String> = row.get::<_, Option<String>>(9)?
+                .and_then(|json_str| serde_json::from_str(&json_str).ok())
+                .unwrap_or_default();
+
             Ok(AgentRecord {
                 agent_type,
                 file_path: file_path.to_string(),
@@ -110,7 +121,7 @@ impl CacheDb {
                 file_size: row.get::<_, i64>(3)? as u64,
                 session_id: row.get(4)?,
                 tokens,
-                tool_calls: vec![],
+                tool_calls,
             })
         });
 
@@ -138,12 +149,14 @@ impl CacheDb {
             (None, None, None, None)
         };
 
+        let tool_calls_json = serde_json::to_string(&record.tool_calls)?;
+
         let conn = self.conn.lock().unwrap();
         conn.execute(
             "INSERT OR REPLACE INTO file_cache
              (file_path, agent_type, created_at, modified_at, file_size, session_id,
-              tokens_input, tokens_output, tokens_cached, tokens_total, cached_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+              tokens_input, tokens_output, tokens_cached, tokens_total, tool_calls, cached_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
             params![
                 record.file_path,
                 agent_type_str,
@@ -155,6 +168,7 @@ impl CacheDb {
                 tokens_output,
                 tokens_cached,
                 tokens_total,
+                tool_calls_json,
                 cached_at,
             ],
         )?;
@@ -188,13 +202,6 @@ impl CacheDb {
             total_entries: total_entries as usize,
             entries_by_agent: by_agent,
         })
-    }
-
-    pub fn clear_cache(&self) -> Result<()> {
-        let conn = self.conn.lock().unwrap();
-        conn.execute("DELETE FROM file_cache", [])?;
-        tracing::info!("Cache cleared");
-        Ok(())
     }
 }
 
