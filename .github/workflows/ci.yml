@@ -45,7 +45,7 @@ jobs:
       - name: Package artifacts
         run: |
           mkdir -p ci
-          cp -r apps/backend/target/release/* ci/
+          cp -r apps/backend/target/release/agent-insights ci/
           cp -r apps/frontend/dist ci/
           tar czf agi.tar.gz -C ci .
 
