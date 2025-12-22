@@ -48,6 +48,8 @@ jobs:
 
       - name: Install frontend dependencies
         run: bun install
+        with:
+          workspaces: "apps/frontend"
 
       - name: Build backend
         run: |
