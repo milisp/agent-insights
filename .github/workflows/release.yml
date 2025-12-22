@@ -65,12 +65,17 @@ jobs:
       - name: Package artifacts
         run: |
           mkdir -p release
-          cp -r apps/backend/target/${{ matrix.args }}/release/* release/
+          if [ -n "${{ matrix.args }}" ]; then
+            cp apps/backend/target/${{ matrix.args }}/release/agent-insights release/
+          else
+            cp apps/backend/target/release/agent-insights release/
+          fi
           cp -r apps/frontend/dist release/
           if [ "$RUNNER_OS" != "Windows" ]; then
             tar -czf agent-insights-${{ runner.os }}.tar.gz -C release .
           else
             powershell Compress-Archive -Path release\* -DestinationPath agent-insights-${{ runner.os }}.zip
+          fi
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v3
