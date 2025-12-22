@@ -81,4 +81,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: agent-insights-${{ runner.os }}
-          path: ${{ runner.os != 'Windows' && 'agent-insights-' + runner.os + '.tar.gz' || 'agent-insights-' + runner.os + '.zip' }}
+          path: ${{ runner.os != 'Windows' && format('agent-insights-{0}.tar.gz', runner.os) || format('agent-insights-{0}.zip', runner.os) }}
