@@ -6,6 +6,8 @@ A full-stack application for tracking and visualizing AI agent usage across Clau
 
 Agent Insights scans your local agent directories and provides beautiful visualizations of your usage patterns over time. See when you're most active with each AI agent, track file generation, and monitor storage usage.
 
+![demo](images/agent-insights.png)
+
 ## Features
 
 - **Multi-Agent Support**: Claude, Gemini, and Codex
