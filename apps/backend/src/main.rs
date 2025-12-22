@@ -55,7 +55,7 @@ async fn main() {
     let watch_paths = vec![
         ("Claude".to_string(), PathBuf::from(&home_dir).join(".claude").join("projects")),
         ("Gemini".to_string(), PathBuf::from(&home_dir).join(".gemini").join("tmp")),
-        ("Codex".to_string(), PathBuf::from(&home_dir).join(".codex")),
+        ("Codex".to_string(), PathBuf::from(&home_dir).join(".codex").join("sessions")),
     ];
 
     let mut watcher = websocket::FileWatcher::new(tx);
