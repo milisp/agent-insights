@@ -78,7 +78,7 @@ jobs:
           fi
 
       - name: Upload release artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: agent-insights-${{ runner.os }}
           path: ${{ runner.os != 'Windows' && format('agent-insights-{0}.tar.gz', runner.os) || format('agent-insights-{0}.zip', runner.os) }}
