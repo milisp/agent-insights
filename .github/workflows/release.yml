@@ -86,3 +86,10 @@ jobs:
         with:
           name: agent-insights-${{ runner.os }}${{ matrix.args != '' && format('-{0}', matrix.args) || '' }}
           path: ${{ runner.os != 'Windows' && format('agent-insights-{0}.tar.gz', runner.os) || format('agent-insights-{0}.zip', runner.os) }}
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: ${{ runner.os != 'Windows' && format('agent-insights-{0}.tar.gz', runner.os) || format('agent-insights-{0}.zip', runner.os) }}
