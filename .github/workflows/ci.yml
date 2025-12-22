@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branch:
+      - 'main'
+    paths:
+      - ".github/workflows/ci.yml"
+      - "apps/backend/Cargo.toml"
+      - "apps/backend/src/**"
+      - "apps/frontend/src/**"
+      - "apps/frontend/src/package.json"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@stable
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "apps/backend"
+
+      - name: Build backend
+        run: cargo build --release --manifest-path apps/backend/Cargo.toml
+
+      - name: Build frontend
+        run: |
+          cd apps/frontend
+          bun install
+          bun run build
+
+      - name: Package artifacts
+        run: |
+          mkdir -p ci
+          cp -r apps/backend/target/release/* ci/
+          cp -r apps/frontend/dist ci/
+          tar czf agi.tar.gz -C ci .
+
+      - name: Upload ci artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: agent-insights-ci
+          path: agi.tar.gz
