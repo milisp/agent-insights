@@ -7,9 +7,11 @@ mod cache;
 mod websocket;
 
 use axum::{
-    routing::get,
+    routing::{get, get_service},
     Router,
+    response::Html,
 };
+use tower_http::services::ServeDir;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::broadcast;
@@ -66,7 +68,22 @@ async fn main() {
         .allow_methods(Any)
         .allow_headers(Any);
 
+    // Serve index.html at the root
+    async fn index() -> Html<String> {
+        let html = tokio::fs::read_to_string("dist/index.html")
+            .await
+            .unwrap_or_else(|_| "<h1>Index not found</h1>".to_string());
+        Html(html)
+    }
+
     let app = Router::new()
+        .route("/", get(index))
+        .nest_service(
+            "/assets",
+            get_service(ServeDir::new("dist/assets")).handle_error(|_| async {
+                (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Static file error")
+            }),
+        )
         .route("/api/heatmaps", get(api::get_all_heatmaps))
         .route("/api/heatmap/:agent", get(api::get_agent_heatmap))
         .route("/ws", get(websocket::ws_handler))
