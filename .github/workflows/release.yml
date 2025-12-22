@@ -16,9 +16,9 @@ jobs:
       matrix:
         include:
           - platform: "ubuntu-latest"
-            args: "x86_64-unknown-linux-gnu"
+            args: ""
           - platform: "windows-latest"
-            args: "x86_64-pc-windows-msvc"
+            args: ""
           - platform: "macos-latest"
             args: ""
           - platform: "macos-latest"
@@ -39,7 +39,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.args }}
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2

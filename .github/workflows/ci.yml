@@ -23,10 +23,7 @@ jobs:
         uses: oven-sh/setup-bun@v2
 
       - name: Install Rust
-        uses: actions-rs/toolchain@stable
-        with:
-          toolchain: stable
-          override: true
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
