@@ -13,16 +13,6 @@ pub struct ClaudeScanner {
 }
 
 impl ClaudeScanner {
-    pub fn new(home_dir: &str) -> Self {
-        let root = PathBuf::from(home_dir)
-            .join(".claude")
-            .join("projects");
-        Self {
-            scanner: FileScanner::new(root),
-            cache: None,
-        }
-    }
-
     pub fn with_cache(home_dir: &str, cache: Arc<CacheDb>) -> Self {
         let root = PathBuf::from(home_dir)
             .join(".claude")
@@ -41,7 +31,8 @@ impl ClaudeScanner {
 
         for file_info in files {
             if let Some(file_name) = file_info.path.file_name().and_then(|n| n.to_str()) {
-                if file_name.starts_with("agent") {
+                tracing::debug!("file_name : {:?}", file_name);
+                if file_name.starts_with("agent-") {
                     continue;
                 }
             }
@@ -88,7 +79,6 @@ impl ClaudeScanner {
             if let Ok(json) = serde_json::from_str::<Value>(line) {
                 if session_id.is_none() {
                     if let Some(sid) = json.get("sessionId")
-                        .or_else(|| json.get("session_id"))
                         .and_then(|v| v.as_str()) {
                         session_id = Some(sid.to_string());
                     }
@@ -102,11 +92,22 @@ impl ClaudeScanner {
                                 if typ == "tool_use" {
                                     if let Some(name) = item.get("name").and_then(|n| n.as_str()) {
                                         tool_calls.push(name.to_string());
+                                        tracing::debug!("Found tool_use: {}", name); // <-- log tool use
+                                    } else {
+                                        tracing::debug!("tool_use without name: {:?}", item);
                                     }
+                                } else {
+                                    tracing::debug!("Skipped non-tool_use type: {}", typ);
                                 }
+                            } else {
+                                tracing::debug!("Item without type: {:?}", item);
                             }
                         }
+                    } else {
+                        tracing::debug!("message.content missing or not array: {:?}", message.get("content"));
                     }
+                } else {
+                    tracing::debug!("No message in JSON line: {}", line);
                 }
 
                 // Extract usage information

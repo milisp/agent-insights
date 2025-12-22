@@ -17,17 +17,8 @@ pub use watcher::FileWatcher;
 #[derive(Clone, Debug, Serialize)]
 #[serde(tag = "type")]
 pub enum UpdateMessage {
-    #[serde(rename = "scan_started")]
-    ScanStarted { agent: String },
-
-    #[serde(rename = "scan_completed")]
-    ScanCompleted { agent: String, count: usize },
-
     #[serde(rename = "file_added")]
     FileAdded { agent: String, file_path: String },
-
-    #[serde(rename = "cache_stats")]
-    CacheStats { total: usize, by_agent: std::collections::HashMap<String, usize> },
 }
 
 pub type UpdateSender = broadcast::Sender<UpdateMessage>;
