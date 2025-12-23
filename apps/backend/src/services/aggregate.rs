@@ -14,8 +14,9 @@ impl AggregationService {
         let mut total_cache_read = 0u64;
         let mut total_tokens = 0u64;
 
-        // Check if this is Codex agent
-        let is_codex = records.first().map(|r| matches!(r.agent_type, AgentType::Codex)).unwrap_or(false);
+        // Check agent type for different token calculation methods
+        let agent_type = records.first().map(|r| &r.agent_type);
+        let use_api_total = matches!(agent_type, Some(AgentType::Codex) | Some(AgentType::Gemini));
 
         for record in &records {
             let date = record.date();
@@ -34,8 +35,8 @@ impl AggregationService {
                 total_output += tokens.output;
                 total_cache_creation += tokens.cache_creation;
                 total_cache_read += tokens.cached;
-                // For Codex, use total_tokens from API; for others, we'll calculate it
-                if is_codex {
+                // For Codex and Gemini, use total_tokens from API; for others, we'll calculate it
+                if use_api_total {
                     total_tokens += tokens.total;
                 }
             }
@@ -53,15 +54,15 @@ impl AggregationService {
             .collect();
         tool_calls.sort_by(|a, b| b.count.cmp(&a.count));
 
-        // For Codex, use the total_tokens from API; for others, calculate it
-        let final_total = if is_codex {
+        // For Codex and Gemini, use the total_tokens from API; for others, calculate it
+        let final_total = if use_api_total {
             total_tokens
         } else {
             total_input + total_output + total_cache_creation + total_cache_read
         };
 
-        // Calculate total reasoning tokens if needed
-        let total_reasoning = if is_codex {
+        // Calculate total reasoning tokens for agents that support it
+        let total_reasoning: u64 = if use_api_total {
             records.iter()
                 .filter_map(|r| r.tokens.as_ref().map(|t| t.reasoning))
                 .sum()
@@ -74,7 +75,7 @@ impl AggregationService {
             output_tokens: total_output,
             cache_creation_tokens: total_cache_creation,
             cache_read_tokens: total_cache_read,
-            reasoning_tokens: if is_codex { Some(total_reasoning) } else { None },
+            reasoning_tokens: if total_reasoning > 0 { Some(total_reasoning) } else { None },
             total_tokens: final_total,
         };
 

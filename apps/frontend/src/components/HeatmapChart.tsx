@@ -223,16 +223,17 @@ export function HeatmapChart({ data }: HeatmapChartProps) {
                     <span className="text-muted-foreground">Output Tokens</span>
                     <span className="font-mono font-medium">{formatNumber(data.token_stats.output_tokens)}</span>
                   </div>
-                  {data.agent === 'Codex' ? (
+                  {data.token_stats.reasoning_tokens !== undefined && data.token_stats.reasoning_tokens > 0 && (
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Reasoning Tokens</span>
-                      <span className="font-mono font-medium">{formatNumber(data.token_stats.reasoning_tokens || 0)}</span>
+                      <span className="text-muted-foreground">{data.agent === 'Codex' ? "Reasoning Tokens" : "Thoughts"}</span>
+                      <span className="font-mono font-medium">{formatNumber(data.token_stats.reasoning_tokens)}</span>
                     </div>
-                  ) : (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Cache Created</span>
-                    <span className="font-mono font-medium">{formatNumber(data.token_stats.cache_creation_tokens)}</span>
-                  </div>
+                  )}
+                  {data.agent === 'Claude' && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Cache Created</span>
+                      <span className="font-mono font-medium">{formatNumber(data.token_stats.cache_creation_tokens)}</span>
+                    </div>
                   )}
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Cache Read</span>

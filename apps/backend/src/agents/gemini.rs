@@ -46,8 +46,8 @@ impl GeminiScanner {
         let mut total_input = 0u64;
         let mut total_output = 0u64;
         let mut total_cached = 0u64;
-        let mut total_thoughts = 0u64;
-        let mut total_tool = 0u64;
+        let mut total_reasoning = 0u64;
+        let mut total_tokens = 0u64;
         let mut tool_calls: Vec<String> = Vec::new();
 
         if let Some(messages) = json.get("messages").and_then(|v| v.as_array()) {
@@ -64,10 +64,10 @@ impl GeminiScanner {
                         total_cached = total_cached.saturating_add(cached);
                     }
                     if let Some(thoughts) = tokens.get("thoughts").and_then(|v| v.as_u64()) {
-                        total_thoughts = total_thoughts.saturating_add(thoughts);
+                        total_reasoning = total_reasoning.saturating_add(thoughts);
                     }
-                    if let Some(tool) = tokens.get("tool").and_then(|v| v.as_u64()) {
-                        total_tool = total_tool.saturating_add(tool);
+                    if let Some(total) = tokens.get("total").and_then(|v| v.as_u64()) {
+                        total_tokens = total_tokens.saturating_add(total);
                     }
                 }
 
@@ -83,15 +83,13 @@ impl GeminiScanner {
         }
 
         let tokens = if total_input > 0 || total_output > 0 {
-            // Gemini: aggregate output = output + thoughts + tool (like CodMate does)
-            let aggregated_output = total_output + total_thoughts + total_tool;
             Some(TokenInfo {
                 input: total_input,
-                output: aggregated_output,
+                output: total_output,
                 cached: total_cached,
                 cache_creation: 0,
-                reasoning: 0,
-                total: total_input + aggregated_output + total_cached,
+                reasoning: total_reasoning,
+                total: total_tokens,
             })
         } else {
             None
