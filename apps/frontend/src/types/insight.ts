@@ -14,6 +14,7 @@ export interface TokenStats {
   output_tokens: number
   cache_creation_tokens: number
   cache_read_tokens: number
+  reasoning_tokens?: number
   total_tokens: number
 }
 

@@ -44,6 +44,7 @@ impl CacheDb {
                 tokens_input INTEGER,
                 tokens_output INTEGER,
                 tokens_cached INTEGER,
+                tokens_reasoning INTEGER,
                 tokens_total INTEGER,
                 tool_calls TEXT,
                 cached_at TEXT NOT NULL
@@ -67,6 +68,12 @@ impl CacheDb {
             [],
         ).ok(); // Ignore error if column already exists
 
+        // Migrate existing tables to add tokens_reasoning column if it doesn't exist
+        conn.execute(
+            "ALTER TABLE file_cache ADD COLUMN tokens_reasoning INTEGER",
+            [],
+        ).ok(); // Ignore error if column already exists
+
         Ok(())
     }
 
@@ -74,7 +81,7 @@ impl CacheDb {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
             "SELECT agent_type, created_at, modified_at, file_size, session_id,
-                    tokens_input, tokens_output, tokens_cached, tokens_total, tool_calls
+                    tokens_input, tokens_output, tokens_cached, tokens_reasoning, tokens_total, tool_calls
              FROM file_cache
              WHERE file_path = ?1 AND modified_at = ?2"
         )?;
@@ -92,24 +99,26 @@ impl CacheDb {
             let created_str: String = row.get(1)?;
             let modified_str: String = row.get(2)?;
 
-            let tokens = if let (Some(input), Some(output), Some(cached), Some(total)) = (
+            let tokens = if let (Some(input), Some(output), Some(cached), Some(reasoning), Some(total)) = (
                 row.get::<_, Option<i64>>(5)?,
                 row.get::<_, Option<i64>>(6)?,
                 row.get::<_, Option<i64>>(7)?,
                 row.get::<_, Option<i64>>(8)?,
+                row.get::<_, Option<i64>>(9)?,
             ) {
                 Some(crate::domain::TokenInfo {
                     input: input as u64,
                     output: output as u64,
                     cached: cached as u64,
                     cache_creation: 0,
+                    reasoning: reasoning as u64,
                     total: total as u64,
                 })
             } else {
                 None
             };
 
-            let tool_calls: Vec<String> = row.get::<_, Option<String>>(9)?
+            let tool_calls: Vec<String> = row.get::<_, Option<String>>(10)?
                 .and_then(|json_str| serde_json::from_str(&json_str).ok())
                 .unwrap_or_default();
 
@@ -138,15 +147,16 @@ impl CacheDb {
         let modified_str = record.modified_at.to_rfc3339();
         let cached_at = Utc::now().to_rfc3339();
 
-        let (tokens_input, tokens_output, tokens_cached, tokens_total) = if let Some(ref tokens) = record.tokens {
+        let (tokens_input, tokens_output, tokens_cached, tokens_reasoning, tokens_total) = if let Some(ref tokens) = record.tokens {
             (
                 Some(tokens.input as i64),
                 Some(tokens.output as i64),
                 Some(tokens.cached as i64),
+                Some(tokens.reasoning as i64),
                 Some(tokens.total as i64),
             )
         } else {
-            (None, None, None, None)
+            (None, None, None, None, None)
         };
 
         let tool_calls_json = serde_json::to_string(&record.tool_calls)?;
@@ -155,8 +165,8 @@ impl CacheDb {
         conn.execute(
             "INSERT OR REPLACE INTO file_cache
              (file_path, agent_type, created_at, modified_at, file_size, session_id,
-              tokens_input, tokens_output, tokens_cached, tokens_total, tool_calls, cached_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+              tokens_input, tokens_output, tokens_cached, tokens_reasoning, tokens_total, tool_calls, cached_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
             params![
                 record.file_path,
                 agent_type_str,
@@ -167,6 +177,7 @@ impl CacheDb {
                 tokens_input,
                 tokens_output,
                 tokens_cached,
+                tokens_reasoning,
                 tokens_total,
                 tool_calls_json,
                 cached_at,

@@ -1,4 +1,4 @@
-use crate::domain::{AgentRecord, HeatmapData, ToolCallStats, TokenStats};
+use crate::domain::{AgentRecord, AgentType, HeatmapData, ToolCallStats, TokenStats};
 use chrono::NaiveDate;
 use std::collections::HashMap;
 
@@ -12,6 +12,10 @@ impl AggregationService {
         let mut total_output = 0u64;
         let mut total_cache_creation = 0u64;
         let mut total_cache_read = 0u64;
+        let mut total_tokens = 0u64;
+
+        // Check if this is Codex agent
+        let is_codex = records.first().map(|r| matches!(r.agent_type, AgentType::Codex)).unwrap_or(false);
 
         for record in &records {
             let date = record.date();
@@ -30,6 +34,10 @@ impl AggregationService {
                 total_output += tokens.output;
                 total_cache_creation += tokens.cache_creation;
                 total_cache_read += tokens.cached;
+                // For Codex, use total_tokens from API; for others, we'll calculate it
+                if is_codex {
+                    total_tokens += tokens.total;
+                }
             }
         }
 
@@ -45,12 +53,29 @@ impl AggregationService {
             .collect();
         tool_calls.sort_by(|a, b| b.count.cmp(&a.count));
 
+        // For Codex, use the total_tokens from API; for others, calculate it
+        let final_total = if is_codex {
+            total_tokens
+        } else {
+            total_input + total_output + total_cache_creation + total_cache_read
+        };
+
+        // Calculate total reasoning tokens if needed
+        let total_reasoning = if is_codex {
+            records.iter()
+                .filter_map(|r| r.tokens.as_ref().map(|t| t.reasoning))
+                .sum()
+        } else {
+            0
+        };
+
         let token_stats = TokenStats {
             input_tokens: total_input,
             output_tokens: total_output,
             cache_creation_tokens: total_cache_creation,
             cache_read_tokens: total_cache_read,
-            total_tokens: total_input + total_output + total_cache_creation + total_cache_read,
+            reasoning_tokens: if is_codex { Some(total_reasoning) } else { None },
+            total_tokens: final_total,
         };
 
         HeatmapData::from_counts(agent, day_counts, tool_calls, token_stats)

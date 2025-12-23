@@ -27,6 +27,7 @@ pub struct TokenInfo {
     pub output: u64,
     pub cached: u64,
     pub cache_creation: u64,
+    pub reasoning: u64,
     pub total: u64,
 }
 

@@ -97,6 +97,13 @@ export function HeatmapChart({ data }: HeatmapChartProps) {
     return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`
   }
 
+  const formatNumber = (num: number): string => {
+    return new Intl.NumberFormat('en', {
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }).format(num)
+  }
+
   const cells = generateYearGrid()
   const monthLabels = getMonthLabels(cells)
   const weeks = Math.max(...cells.map((c) => c.x)) + 1
@@ -210,23 +217,30 @@ export function HeatmapChart({ data }: HeatmapChartProps) {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Input Tokens</span>
-                    <span className="font-mono font-medium">{data.token_stats.input_tokens.toLocaleString()}</span>
+                    <span className="font-mono font-medium">{formatNumber(data.token_stats.input_tokens)}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Output Tokens</span>
-                    <span className="font-mono font-medium">{data.token_stats.output_tokens.toLocaleString()}</span>
+                    <span className="font-mono font-medium">{formatNumber(data.token_stats.output_tokens)}</span>
                   </div>
+                  {data.agent === 'Codex' ? (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Reasoning Tokens</span>
+                      <span className="font-mono font-medium">{formatNumber(data.token_stats.reasoning_tokens || 0)}</span>
+                    </div>
+                  ) : (
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Cache Created</span>
-                    <span className="font-mono font-medium">{data.token_stats.cache_creation_tokens.toLocaleString()}</span>
+                    <span className="font-mono font-medium">{formatNumber(data.token_stats.cache_creation_tokens)}</span>
                   </div>
+                  )}
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Cache Read</span>
-                    <span className="font-mono font-medium">{data.token_stats.cache_read_tokens.toLocaleString()}</span>
+                    <span className="font-mono font-medium">{formatNumber(data.token_stats.cache_read_tokens)}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm pt-1 border-t">
                     <span className="font-semibold">Total</span>
-                    <span className="font-mono font-semibold">{data.token_stats.total_tokens.toLocaleString()}</span>
+                    <span className="font-mono font-semibold">{formatNumber(data.token_stats.total_tokens)}</span>
                   </div>
                 </div>
               </div>

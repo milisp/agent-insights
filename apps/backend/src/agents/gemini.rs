@@ -90,6 +90,7 @@ impl GeminiScanner {
                 output: aggregated_output,
                 cached: total_cached,
                 cache_creation: 0,
+                reasoning: 0,
                 total: total_input + aggregated_output + total_cached,
             })
         } else {

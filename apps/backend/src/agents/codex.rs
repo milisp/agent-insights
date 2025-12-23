@@ -39,6 +39,7 @@ impl CodexScanner {
         let mut total_cached_input = 0u64;
         let mut total_output = 0u64;
         let mut total_reasoning = 0u64;
+        let mut total_tokens = 0u64;
         let mut tool_calls: Vec<String> = Vec::new();
 
         for line in content.lines() {
@@ -68,6 +69,9 @@ impl CodexScanner {
                                             }
                                             if let Some(reasoning) = total_usage.get("reasoning_output_tokens").and_then(|v| v.as_u64()) {
                                                 total_reasoning = reasoning;
+                                            }
+                                            if let Some(total) = total_usage.get("total_tokens").and_then(|v| v.as_u64()) {
+                                                total_tokens = total;
                                             }
                                         }
                                     }
@@ -106,10 +110,11 @@ impl CodexScanner {
         let tokens = if total_input > 0 || total_output > 0 {
             Some(TokenInfo {
                 input: total_input,
-                output: total_output + total_reasoning,
+                output: total_output,
                 cached: total_cached_input,
                 cache_creation: 0,
-                total: total_input + total_cached_input + total_output + total_reasoning,
+                reasoning: total_reasoning,
+                total: total_tokens,
             })
         } else {
             None

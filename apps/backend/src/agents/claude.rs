@@ -134,6 +134,7 @@ impl ClaudeScanner {
                 output: total_output,
                 cached: total_cached,
                 cache_creation: total_cache_creation,
+                reasoning: 0,
                 total: total_input + total_output + total_cached + total_cache_creation,
             })
         } else {
