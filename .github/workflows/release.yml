@@ -17,12 +17,16 @@ jobs:
         include:
           - platform: "ubuntu-latest"
             args: ""
+            artifact_name: "linux-x86_64"
           - platform: "windows-latest"
             args: ""
+            artifact_name: "windows-x86_64"
           - platform: "macos-latest"
             args: ""
+            artifact_name: "macos-arm64"
           - platform: "macos-latest"
             args: "x86_64-apple-darwin"
+            artifact_name: "macos-x64"
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -76,20 +80,20 @@ jobs:
           fi
           cp -r apps/frontend/dist release/
           if [ "$RUNNER_OS" != "Windows" ]; then
-            tar -czf agent-insights-${{ runner.os }}.tar.gz -C release .
+            tar -czf agent-insights-${{ matrix.artifact_name }}.tar.gz -C release .
           else
-            powershell Compress-Archive -Path release\* -DestinationPath agent-insights-${{ runner.os }}.zip
+            powershell Compress-Archive -Path release\* -DestinationPath agent-insights-${{ matrix.artifact_name }}.zip
           fi
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v4
         with:
-          name: agent-insights-${{ runner.os }}${{ matrix.args != '' && format('-{0}', matrix.args) || '' }}
-          path: ${{ runner.os != 'Windows' && format('agent-insights-{0}.tar.gz', runner.os) || format('agent-insights-{0}.zip', runner.os) }}
+          name: agent-insights-${{ matrix.artifact_name }}
+          path: ${{ runner.os != 'Windows' && format('agent-insights-{0}.tar.gz', matrix.artifact_name) || format('agent-insights-{0}.zip', matrix.artifact_name) }}
 
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: ${{ runner.os != 'Windows' && format('agent-insights-{0}.tar.gz', runner.os) || format('agent-insights-{0}.zip', runner.os) }}
+          files: ${{ runner.os != 'Windows' && format('agent-insights-{0}.tar.gz', matrix.artifact_name) || format('agent-insights-{0}.zip', matrix.artifact_name) }}
