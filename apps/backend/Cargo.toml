@@ -32,7 +32,7 @@ walkdir = "2.5"
 tracing = "0.1"
 
 # optional deps
-rusqlite = { version = "0.32", features = ["bundled"], optional = true }
+rusqlite = { version = "0.38", features = ["bundled"], optional = true }
 axum = { version = "0.7", features = ["ws"], optional = true }
 tower-http = { version = "0.6", features = ["cors", "fs"], optional = true }
 tracing-subscriber = { version = "0.3", optional = true }
