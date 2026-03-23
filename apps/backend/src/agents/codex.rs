@@ -35,6 +35,7 @@ impl CodexScanner {
         let content = fs::read_to_string(&file_info.path)?;
 
         let mut session_id: Option<String> = None;
+        let mut model: Option<String> = None;
         let mut total_input = 0u64;
         let mut total_cached_input = 0u64;
         let mut total_output = 0u64;
@@ -92,15 +93,20 @@ impl CodexScanner {
                     }
                 }
 
-                // Extract session ID from session_meta
-                if session_id.is_none() {
-                    if let Some(event_type) = json.get("type").and_then(|t| t.as_str()) {
-                        if event_type == "session_meta" {
-                            if let Some(payload) = json.get("payload") {
-                                if let Some(id) = payload.get("id").and_then(|s| s.as_str()) {
-                                    session_id = Some(id.to_string());
-                                }
+                // Extract session ID from session_meta and model from turn_context
+                if let Some(event_type) = json.get("type").and_then(|t| t.as_str()) {
+                    if session_id.is_none() && event_type == "session_meta" {
+                        if let Some(payload) = json.get("payload") {
+                            if let Some(id) = payload.get("id").and_then(|s| s.as_str()) {
+                                session_id = Some(id.to_string());
                             }
+                        }
+                    }
+                    if model.is_none() && event_type == "turn_context" {
+                        if let Some(m) = json.get("payload")
+                            .and_then(|p| p.get("model"))
+                            .and_then(|v| v.as_str()) {
+                            model = Some(m.to_string());
                         }
                     }
                 }
@@ -127,6 +133,7 @@ impl CodexScanner {
             modified_at: file_info.modified_at,
             file_size: file_info.size,
             session_id,
+            model,
             tokens,
             tool_calls,
         })

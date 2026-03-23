@@ -43,6 +43,7 @@ impl GeminiScanner {
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
+        let mut model: Option<String> = None;
         let mut total_input = 0u64;
         let mut total_output = 0u64;
         let mut total_cached = 0u64;
@@ -52,6 +53,13 @@ impl GeminiScanner {
 
         if let Some(messages) = json.get("messages").and_then(|v| v.as_array()) {
             for msg in messages {
+                // Extract model from first message that has it
+                if model.is_none() {
+                    if let Some(m) = msg.get("model").and_then(|v| v.as_str()) {
+                        model = Some(m.to_string());
+                    }
+                }
+
                 // Extract token usage from tokens field
                 if let Some(tokens) = msg.get("tokens") {
                     if let Some(input) = tokens.get("input").and_then(|v| v.as_u64()) {
@@ -102,6 +110,7 @@ impl GeminiScanner {
             modified_at: file_info.modified_at,
             file_size: file_info.size,
             session_id,
+            model,
             tokens,
             tool_calls,
         })

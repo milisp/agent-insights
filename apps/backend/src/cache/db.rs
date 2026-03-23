@@ -74,6 +74,12 @@ impl CacheDb {
             [],
         ).ok(); // Ignore error if column already exists
 
+        // Migrate existing tables to add model column if it doesn't exist
+        conn.execute(
+            "ALTER TABLE file_cache ADD COLUMN model TEXT",
+            [],
+        ).ok(); // Ignore error if column already exists
+
         Ok(())
     }
 
@@ -81,7 +87,7 @@ impl CacheDb {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
             "SELECT agent_type, created_at, modified_at, file_size, session_id,
-                    tokens_input, tokens_output, tokens_cached, tokens_reasoning, tokens_total, tool_calls
+                    tokens_input, tokens_output, tokens_cached, tokens_reasoning, tokens_total, tool_calls, model
              FROM file_cache
              WHERE file_path = ?1 AND modified_at = ?2"
         )?;
@@ -129,6 +135,7 @@ impl CacheDb {
                 modified_at: modified_str.parse().unwrap_or_else(|_| Utc::now()),
                 file_size: row.get::<_, i64>(3)? as u64,
                 session_id: row.get(4)?,
+                model: row.get(11)?,
                 tokens,
                 tool_calls,
             })
@@ -165,8 +172,8 @@ impl CacheDb {
         conn.execute(
             "INSERT OR REPLACE INTO file_cache
              (file_path, agent_type, created_at, modified_at, file_size, session_id,
-              tokens_input, tokens_output, tokens_cached, tokens_reasoning, tokens_total, tool_calls, cached_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+              tokens_input, tokens_output, tokens_cached, tokens_reasoning, tokens_total, tool_calls, cached_at, model)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
             params![
                 record.file_path,
                 agent_type_str,
@@ -181,6 +188,7 @@ impl CacheDb {
                 tokens_total,
                 tool_calls_json,
                 cached_at,
+                record.model,
             ],
         )?;
 

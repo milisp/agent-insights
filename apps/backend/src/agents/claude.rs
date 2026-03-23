@@ -87,6 +87,7 @@ impl ClaudeScanner {
         let content = fs::read_to_string(&file_info.path)?;
 
         let mut session_id: Option<String> = None;
+        let mut model: Option<String> = None;
         let mut total_input = 0u64;
         let mut total_output = 0u64;
         let mut total_cached = 0u64;
@@ -104,6 +105,14 @@ impl ClaudeScanner {
                     if let Some(sid) = json.get("sessionId")
                         .and_then(|v| v.as_str()) {
                         session_id = Some(sid.to_string());
+                    }
+                }
+
+                if model.is_none() {
+                    if let Some(m) = json.get("message")
+                        .and_then(|msg| msg.get("model"))
+                        .and_then(|v| v.as_str()) {
+                        model = Some(m.to_string());
                     }
                 }
 
@@ -169,6 +178,7 @@ impl ClaudeScanner {
             modified_at: file_info.modified_at,
             file_size: file_info.size,
             session_id,
+            model,
             tokens,
             tool_calls,
         })

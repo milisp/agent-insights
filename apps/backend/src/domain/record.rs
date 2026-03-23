@@ -17,6 +17,7 @@ pub struct AgentRecord {
     pub modified_at: DateTime<Utc>,
     pub file_size: u64,
     pub session_id: Option<String>,
+    pub model: Option<String>,
     pub tokens: Option<TokenInfo>,
     pub tool_calls: Vec<String>,
 }
