@@ -195,6 +195,65 @@ impl CacheDb {
         Ok(())
     }
 
+    /// Return all cached records, optionally filtered to created_at >= since (ISO date "YYYY-MM-DD").
+    pub fn get_all_records(&self, since: Option<&str>) -> Result<Vec<AgentRecord>> {
+        let conn = self.conn.lock().unwrap();
+
+        let sql_with    = "SELECT file_path, agent_type, created_at, modified_at, file_size, session_id,
+                                  tokens_input, tokens_output, tokens_cached, tokens_reasoning, tokens_total, tool_calls, model
+                           FROM file_cache WHERE created_at >= ?1 ORDER BY created_at";
+        let sql_all     = "SELECT file_path, agent_type, created_at, modified_at, file_size, session_id,
+                                  tokens_input, tokens_output, tokens_cached, tokens_reasoning, tokens_total, tool_calls, model
+                           FROM file_cache ORDER BY created_at";
+
+        let mut stmt = conn.prepare(if since.is_some() { sql_with } else { sql_all })?;
+
+        fn parse_row(row: &rusqlite::Row) -> rusqlite::Result<AgentRecord> {
+            let agent_type = match row.get::<_, String>(1)?.as_str() {
+                "Claude" => AgentType::Claude,
+                "Gemini" => AgentType::Gemini,
+                "Codex"  => AgentType::Codex,
+                _        => AgentType::Codexia,
+            };
+            let tokens = match (
+                row.get::<_, Option<i64>>(6)?,
+                row.get::<_, Option<i64>>(7)?,
+                row.get::<_, Option<i64>>(8)?,
+                row.get::<_, Option<i64>>(9)?,
+                row.get::<_, Option<i64>>(10)?,
+            ) {
+                (Some(i), Some(o), Some(c), Some(r), Some(t)) => Some(crate::domain::TokenInfo {
+                    input: i as u64, output: o as u64, cached: c as u64,
+                    cache_creation: 0, reasoning: r as u64, total: t as u64,
+                }),
+                _ => None,
+            };
+            let tool_calls: Vec<String> = row.get::<_, Option<String>>(11)?
+                .and_then(|s| serde_json::from_str(&s).ok())
+                .unwrap_or_default();
+            let created_str: String = row.get(2)?;
+            let modified_str: String = row.get(3)?;
+            Ok(AgentRecord {
+                agent_type,
+                file_path:  row.get(0)?,
+                created_at: created_str.parse().unwrap_or_else(|_| chrono::Utc::now()),
+                modified_at: modified_str.parse().unwrap_or_else(|_| chrono::Utc::now()),
+                file_size:  row.get::<_, i64>(4)? as u64,
+                session_id: row.get(5)?,
+                model:      row.get(12)?,
+                tokens,
+                tool_calls,
+            })
+        }
+
+        let records: rusqlite::Result<Vec<AgentRecord>> = if let Some(s) = since {
+            stmt.query_map(params![s], parse_row)?.collect()
+        } else {
+            stmt.query_map([], parse_row)?.collect()
+        };
+        Ok(records?)
+    }
+
     pub fn get_cache_stats(&self) -> Result<CacheStats> {
         let conn = self.conn.lock().unwrap();
         let total_entries: i64 = conn.query_row(

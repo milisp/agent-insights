@@ -62,6 +62,14 @@ impl CollectionService {
         Ok(all_records)
     }
 
+    /// Refresh the cache by scanning all files, then return records with created_at >= since.
+    /// `since` is an ISO date "YYYY-MM-DD"; None returns all records.
+    #[cfg(feature = "cache")]
+    pub async fn collect_since(&self, since: Option<&str>) -> Result<Vec<AgentRecord>> {
+        let _ = self.collect_all().await; // populate cache
+        self.cache.get_all_records(since)
+    }
+
     pub async fn collect_claude(&self) -> Result<Vec<AgentRecord>> {
         #[cfg(feature = "cache")]
         let scanner = ClaudeScanner::with_cache(&self.home_dir, Arc::clone(&self.cache));

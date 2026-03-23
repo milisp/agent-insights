@@ -15,7 +15,6 @@ impl AggregationService {
         let mut total_cache_read = 0u64;
         let mut total_tokens = 0u64;
 
-        // Check agent type for different token calculation methods
         let agent_type = records.first().map(|r| &r.agent_type);
         let use_api_total = matches!(agent_type, Some(AgentType::Codex) | Some(AgentType::Gemini));
 
@@ -25,23 +24,19 @@ impl AggregationService {
             entry.0 += 1;
             entry.1 += record.file_size;
 
-            // Aggregate tool calls
             for tool in &record.tool_calls {
                 *tool_call_counts.entry(tool.clone()).or_insert(0) += 1;
             }
 
-            // Aggregate model usage
             if let Some(ref m) = record.model {
                 *model_counts.entry(m.clone()).or_insert(0) += 1;
             }
 
-            // Aggregate tokens
             if let Some(ref tokens) = record.tokens {
                 total_input += tokens.input;
                 total_output += tokens.output;
                 total_cache_creation += tokens.cache_creation;
                 total_cache_read += tokens.cached;
-                // For Codex and Gemini, use total_tokens from API; for others, we'll calculate it
                 if use_api_total {
                     total_tokens += tokens.total;
                 }
@@ -64,14 +59,12 @@ impl AggregationService {
         models.sort_by(|a, b| b.1.cmp(&a.1));
         let models: Vec<String> = models.into_iter().map(|(m, _)| m).collect();
 
-        // For Codex and Gemini, use the total_tokens from API; for others, calculate it
         let final_total = if use_api_total {
             total_tokens
         } else {
             total_input + total_output + total_cache_creation + total_cache_read
         };
 
-        // Calculate total reasoning tokens for agents that support it
         let total_reasoning: u64 = if use_api_total {
             records.iter()
                 .filter_map(|r| r.tokens.as_ref().map(|t| t.reasoning))
