@@ -8,6 +8,7 @@ impl AggregationService {
     pub fn aggregate_by_date(records: Vec<AgentRecord>) -> HeatmapData {
         let mut day_counts: HashMap<NaiveDate, (usize, u64)> = HashMap::new();
         let mut tool_call_counts: HashMap<String, usize> = HashMap::new();
+        let mut model_counts: HashMap<String, usize> = HashMap::new();
         let mut total_input = 0u64;
         let mut total_output = 0u64;
         let mut total_cache_creation = 0u64;
@@ -27,6 +28,11 @@ impl AggregationService {
             // Aggregate tool calls
             for tool in &record.tool_calls {
                 *tool_call_counts.entry(tool.clone()).or_insert(0) += 1;
+            }
+
+            // Aggregate model usage
+            if let Some(ref m) = record.model {
+                *model_counts.entry(m.clone()).or_insert(0) += 1;
             }
 
             // Aggregate tokens
@@ -54,6 +60,10 @@ impl AggregationService {
             .collect();
         tool_calls.sort_by(|a, b| b.count.cmp(&a.count));
 
+        let mut models: Vec<(String, usize)> = model_counts.into_iter().collect();
+        models.sort_by(|a, b| b.1.cmp(&a.1));
+        let models: Vec<String> = models.into_iter().map(|(m, _)| m).collect();
+
         // For Codex and Gemini, use the total_tokens from API; for others, calculate it
         let final_total = if use_api_total {
             total_tokens
@@ -79,7 +89,7 @@ impl AggregationService {
             total_tokens: final_total,
         };
 
-        HeatmapData::from_counts(agent, day_counts, tool_calls, token_stats)
+        HeatmapData::from_counts(agent, day_counts, tool_calls, token_stats, models)
     }
 
     pub fn aggregate_by_agent(records: Vec<AgentRecord>) -> HashMap<String, HeatmapData> {

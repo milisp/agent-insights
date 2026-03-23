@@ -35,6 +35,8 @@ pub struct HeatmapData {
     pub total_size: u64,
     pub tool_calls: Vec<ToolCallStats>,
     pub token_stats: TokenStats,
+    /// Unique model names seen across all records, sorted by frequency
+    pub models: Vec<String>,
 }
 
 impl HeatmapData {
@@ -43,6 +45,7 @@ impl HeatmapData {
         day_counts: HashMap<NaiveDate, (usize, u64)>,
         tool_calls: Vec<ToolCallStats>,
         token_stats: TokenStats,
+        models: Vec<String>,
     ) -> Self {
         let mut data: Vec<DayActivity> = day_counts
             .into_iter()
@@ -67,6 +70,7 @@ impl HeatmapData {
             total_size,
             tool_calls,
             token_stats,
+            models,
         }
     }
 }
