@@ -1,11 +1,6 @@
-mod domain;
-mod scanner;
-mod agents;
-mod services;
-mod api;
-mod cache;
-mod websocket;
-
+use agent_insights::services;
+use agent_insights::websocket;
+use agent_insights::api;
 use axum::{
     routing::{get, get_service},
     Router,
@@ -16,7 +11,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use tower_http::cors::{CorsLayer, Any};
-use tracing_subscriber;
 
 #[tokio::main]
 async fn main() {
@@ -36,6 +30,7 @@ async fn main() {
         }
     }
 
+    #[cfg(feature = "cache")]
     if let Ok(stats) = service.cache_stats() {
         tracing::info!("Cache stats: {} total entries", stats.total_entries);
         for (agent, count) in stats.entries_by_agent {

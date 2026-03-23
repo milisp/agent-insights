@@ -1,3 +1,4 @@
+#[cfg(feature = "cache")]
 use crate::cache::CacheDb;
 use crate::domain::{AgentRecord, AgentType, TokenInfo};
 use crate::scanner::{FileInfo, FileScanner};
@@ -5,14 +6,29 @@ use anyhow::Result;
 use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
+#[cfg(feature = "cache")]
 use std::sync::Arc;
 
 pub struct ClaudeScanner {
     scanner: FileScanner,
+    #[cfg(feature = "cache")]
     cache: Option<Arc<CacheDb>>,
 }
 
 impl ClaudeScanner {
+    /// Create a scanner without cache (used when the `cache` feature is disabled).
+    pub fn new(home_dir: &str) -> Self {
+        let root = PathBuf::from(home_dir)
+            .join(".claude")
+            .join("projects");
+        Self {
+            scanner: FileScanner::new(root),
+            #[cfg(feature = "cache")]
+            cache: None,
+        }
+    }
+
+    #[cfg(feature = "cache")]
     pub fn with_cache(home_dir: &str, cache: Arc<CacheDb>) -> Self {
         let root = PathBuf::from(home_dir)
             .join(".claude")
@@ -26,7 +42,9 @@ impl ClaudeScanner {
     pub fn scan(&self) -> Result<Vec<AgentRecord>> {
         let files = self.scanner.scan_jsonl_files()?;
         let mut records = Vec::new();
+        #[cfg(feature = "cache")]
         let mut cache_hits = 0;
+        #[cfg(feature = "cache")]
         let mut cache_misses = 0;
 
         for file_info in files {
@@ -36,6 +54,7 @@ impl ClaudeScanner {
                     continue;
                 }
             }
+            #[cfg(feature = "cache")]
             let record = if let Some(ref cache) = self.cache {
                 if let Ok(Some(cached)) = cache.get_cached_record(&file_info.path.to_string_lossy(), &file_info.modified_at) {
                     cache_hits += 1;
@@ -50,10 +69,14 @@ impl ClaudeScanner {
                 self.parse_jsonl_file(&file_info)?
             };
 
+            #[cfg(not(feature = "cache"))]
+            let record = self.parse_jsonl_file(&file_info)?;
+
             records.push(record);
         }
 
-        if let Some(_) = self.cache {
+        #[cfg(feature = "cache")]
+        if self.cache.is_some() {
             tracing::debug!("Claude scan: {} cache hits, {} cache misses", cache_hits, cache_misses);
         }
 
@@ -84,7 +107,6 @@ impl ClaudeScanner {
                     }
                 }
 
-                // Extract tool_use information
                 if let Some(message) = json.get("message") {
                     if let Some(content) = message.get("content").and_then(|c| c.as_array()) {
                         for item in content {
@@ -92,7 +114,7 @@ impl ClaudeScanner {
                                 if typ == "tool_use" {
                                     if let Some(name) = item.get("name").and_then(|n| n.as_str()) {
                                         tool_calls.push(name.to_string());
-                                        tracing::debug!("Found tool_use: {}", name); // <-- log tool use
+                                        tracing::debug!("Found tool_use: {}", name);
                                     } else {
                                         tracing::debug!("tool_use without name: {:?}", item);
                                     }
@@ -110,7 +132,6 @@ impl ClaudeScanner {
                     tracing::debug!("No message in JSON line: {}", line);
                 }
 
-                // Extract usage information
                 if let Some(usage) = json.get("usage").or_else(|| json.get("message").and_then(|m| m.get("usage"))) {
                     if let Some(input) = usage.get("input_tokens").and_then(|v| v.as_u64()) {
                         total_input = total_input.saturating_add(input);
