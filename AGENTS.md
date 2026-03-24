@@ -12,7 +12,7 @@ Rust backend API for scanning and aggregating AI agent usage data.
 ## Architecture
 
 ```
-backend/
+agent-insights/
 ├── src/
 │   ├── domain/          # Domain models
 │   │   ├── record.rs    # AgentRecord, TokenInfo
@@ -29,6 +29,7 @@ backend/
 │   ├── api/             # HTTP API
 │   │   └── heatmap.rs   # Heatmap endpoints
 │   └── main.rs          # Axum server
+│   └── ui/              # frontend (react + vite + tailwind + shadcn + bun)
 ```
 
 ## API Endpoints
@@ -99,13 +100,3 @@ Startup scan results:
 - 558 Gemini records (65 days)
 - 493 Codex records (68 days)
 - Total: 1717 records in ~1.3 seconds
-
-## Dependencies
-
-- `axum` - Web framework
-- `tokio` - Async runtime
-- `serde/serde_json` - JSON parsing
-- `chrono` - Date/time handling
-- `walkdir` - Recursive directory traversal
-- `tower-http` - CORS middleware
-- `tracing` - Logging

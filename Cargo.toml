@@ -1,3 +1,40 @@
-[workspace]
-members = ["apps/backend"]
-resolver = "2"
+[package]
+name = "agent-insights"
+version = "0.1.3"
+edition = "2024"
+
+[lib]
+name = "agent_insights"
+path = "src/lib.rs"
+
+[features]
+default = ["cache", "web"]
+cache = ["dep:rusqlite"]
+web = [
+    "dep:axum",
+    "dep:tower-http",
+    "dep:tracing-subscriber",
+    "dep:notify",
+    "dep:futures",
+    "dep:clap",
+]
+
+[dependencies]
+tokio = { version = "1.42", features = ["full"] }
+reqwest = { version = "0.12", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dotenv = "0.15"
+anyhow = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+walkdir = "2.5"
+tracing = "0.1"
+
+# optional deps
+rusqlite = { version = "0.38", features = ["bundled"], optional = true }
+axum = { version = "0.7", features = ["ws"], optional = true }
+tower-http = { version = "0.6", features = ["cors", "fs"], optional = true }
+tracing-subscriber = { version = "0.3", optional = true }
+notify = { version = "6.1", optional = true }
+futures = { version = "0.3", optional = true }
+clap = { version = "4.5", features = ["derive"], optional = true }
