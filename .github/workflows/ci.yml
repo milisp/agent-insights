@@ -6,10 +6,10 @@ on:
       - 'main'
     paths:
       - ".github/workflows/ci.yml"
-      - "apps/backend/Cargo.toml"
-      - "apps/backend/src/**"
-      - "apps/frontend/src/**"
-      - "apps/frontend/src/package.json"
+      - "Cargo.toml"
+      - "src/**"
+      - "ui/src/**"
+      - "ui/src/package.json"
 
 jobs:
   build:
@@ -27,23 +27,21 @@ jobs:
 
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: "apps/backend"
 
       - name: Build backend
-        run: cargo build --release --manifest-path apps/backend/Cargo.toml
+        run: cargo build --release
 
       - name: Build frontend
         run: |
-          cd apps/frontend
+          cd ui
           bun install
           bun run build
 
       - name: Package artifacts
         run: |
           mkdir -p ci
-          cp -r apps/backend/target/release/agent-insights ci/
-          cp -r apps/frontend/dist ci/
+          cp -r target/release/agent-insights ci/
+          cp -r ui/dist ci/
           tar czf agi.tar.gz -C ci .
 
       - name: Upload ci artifact
