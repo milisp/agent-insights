@@ -43,6 +43,15 @@ impl GeminiScanner {
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
+        // cwd is stored in ~/.gemini/tmp/{project_name}/.project_root
+        // file_info.path is like ~/.gemini/tmp/{project_name}/chats/session-*.json
+        let cwd: Option<String> = file_info.path
+            .parent()           // chats/
+            .and_then(|p| p.parent()) // {project_name}/
+            .map(|p| p.join(".project_root"))
+            .and_then(|root_file| fs::read_to_string(&root_file).ok())
+            .map(|s| s.trim().to_string());
+
         let mut model: Option<String> = None;
         let mut total_input = 0u64;
         let mut total_output = 0u64;
@@ -111,6 +120,7 @@ impl GeminiScanner {
             file_size: file_info.size,
             session_id,
             model,
+            cwd,
             tokens,
             tool_calls,
         })

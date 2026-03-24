@@ -88,23 +88,33 @@ impl ClaudeScanner {
 
         let mut session_id: Option<String> = None;
         let mut model: Option<String> = None;
+        let mut cwd: Option<String> = None;
         let mut total_input = 0u64;
         let mut total_output = 0u64;
         let mut total_cached = 0u64;
         let mut total_cache_creation = 0u64;
         let mut tool_calls: Vec<String> = Vec::new();
 
+        let mut line_count = 0usize;
         for line in content.lines() {
             let line = line.trim();
             if line.is_empty() {
                 continue;
             }
+            line_count += 1;
 
             if let Ok(json) = serde_json::from_str::<Value>(line) {
                 if session_id.is_none() {
                     if let Some(sid) = json.get("sessionId")
                         .and_then(|v| v.as_str()) {
                         session_id = Some(sid.to_string());
+                    }
+                }
+
+                // cwd appears in the first few lines
+                if cwd.is_none() && line_count <= 3 {
+                    if let Some(c) = json.get("cwd").and_then(|v| v.as_str()) {
+                        cwd = Some(c.to_string());
                     }
                 }
 
@@ -179,6 +189,7 @@ impl ClaudeScanner {
             file_size: file_info.size,
             session_id,
             model,
+            cwd,
             tokens,
             tool_calls,
         })

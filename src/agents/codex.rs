@@ -36,6 +36,7 @@ impl CodexScanner {
 
         let mut session_id: Option<String> = None;
         let mut model: Option<String> = None;
+        let mut cwd: Option<String> = None;
         let mut total_input = 0u64;
         let mut total_cached_input = 0u64;
         let mut total_output = 0u64;
@@ -43,6 +44,7 @@ impl CodexScanner {
         let mut total_tokens = 0u64;
         let mut tool_calls: Vec<String> = Vec::new();
 
+        let mut first_line = true;
         for line in content.lines() {
             let line = line.trim();
             if line.is_empty() {
@@ -50,6 +52,17 @@ impl CodexScanner {
             }
 
             if let Ok(json) = serde_json::from_str::<Value>(line) {
+                // Extract cwd from payload.cwd in the first line
+                if first_line {
+                    first_line = false;
+                    if let Some(c) = json.get("payload")
+                        .and_then(|p| p.get("cwd"))
+                        .and_then(|v| v.as_str())
+                    {
+                        cwd = Some(c.to_string());
+                    }
+                }
+
                 // Extract data based on event type
                 if let Some(event_type) = json.get("type").and_then(|t| t.as_str()) {
                     if let Some(payload) = json.get("payload") {
@@ -134,6 +147,7 @@ impl CodexScanner {
             file_size: file_info.size,
             session_id,
             model,
+            cwd,
             tokens,
             tool_calls,
         })

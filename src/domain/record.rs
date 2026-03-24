@@ -18,6 +18,7 @@ pub struct AgentRecord {
     pub file_size: u64,
     pub session_id: Option<String>,
     pub model: Option<String>,
+    pub cwd: Option<String>,
     pub tokens: Option<TokenInfo>,
     pub tool_calls: Vec<String>,
 }

@@ -47,38 +47,11 @@ impl CacheDb {
                 tokens_reasoning INTEGER,
                 tokens_total INTEGER,
                 tool_calls TEXT,
-                cached_at TEXT NOT NULL
+                cached_at TEXT NOT NULL,
+                cwd TEXT
             )",
             [],
         )?;
-
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_agent_type ON file_cache(agent_type)",
-            [],
-        )?;
-
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_modified_at ON file_cache(modified_at)",
-            [],
-        )?;
-
-        // Migrate existing tables to add tool_calls column if it doesn't exist
-        conn.execute(
-            "ALTER TABLE file_cache ADD COLUMN tool_calls TEXT",
-            [],
-        ).ok(); // Ignore error if column already exists
-
-        // Migrate existing tables to add tokens_reasoning column if it doesn't exist
-        conn.execute(
-            "ALTER TABLE file_cache ADD COLUMN tokens_reasoning INTEGER",
-            [],
-        ).ok(); // Ignore error if column already exists
-
-        // Migrate existing tables to add model column if it doesn't exist
-        conn.execute(
-            "ALTER TABLE file_cache ADD COLUMN model TEXT",
-            [],
-        ).ok(); // Ignore error if column already exists
 
         Ok(())
     }
@@ -87,7 +60,7 @@ impl CacheDb {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
             "SELECT agent_type, created_at, modified_at, file_size, session_id,
-                    tokens_input, tokens_output, tokens_cached, tokens_reasoning, tokens_total, tool_calls, model
+                    tokens_input, tokens_output, tokens_cached, tokens_reasoning, tokens_total, tool_calls, model, cwd
              FROM file_cache
              WHERE file_path = ?1 AND modified_at = ?2"
         )?;
@@ -136,6 +109,7 @@ impl CacheDb {
                 file_size: row.get::<_, i64>(3)? as u64,
                 session_id: row.get(4)?,
                 model: row.get(11)?,
+                cwd: row.get(12)?,
                 tokens,
                 tool_calls,
             })
@@ -172,8 +146,8 @@ impl CacheDb {
         conn.execute(
             "INSERT OR REPLACE INTO file_cache
              (file_path, agent_type, created_at, modified_at, file_size, session_id,
-              tokens_input, tokens_output, tokens_cached, tokens_reasoning, tokens_total, tool_calls, cached_at, model)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+              tokens_input, tokens_output, tokens_cached, tokens_reasoning, tokens_total, tool_calls, cached_at, model, cwd)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
             params![
                 record.file_path,
                 agent_type_str,
@@ -189,6 +163,7 @@ impl CacheDb {
                 tool_calls_json,
                 cached_at,
                 record.model,
+                record.cwd,
             ],
         )?;
 
@@ -200,10 +175,10 @@ impl CacheDb {
         let conn = self.conn.lock().unwrap();
 
         let sql_with    = "SELECT file_path, agent_type, created_at, modified_at, file_size, session_id,
-                                  tokens_input, tokens_output, tokens_cached, tokens_reasoning, tokens_total, tool_calls, model
+                                  tokens_input, tokens_output, tokens_cached, tokens_reasoning, tokens_total, tool_calls, model, cwd
                            FROM file_cache WHERE created_at >= ?1 ORDER BY created_at";
         let sql_all     = "SELECT file_path, agent_type, created_at, modified_at, file_size, session_id,
-                                  tokens_input, tokens_output, tokens_cached, tokens_reasoning, tokens_total, tool_calls, model
+                                  tokens_input, tokens_output, tokens_cached, tokens_reasoning, tokens_total, tool_calls, model, cwd
                            FROM file_cache ORDER BY created_at";
 
         let mut stmt = conn.prepare(if since.is_some() { sql_with } else { sql_all })?;
@@ -241,6 +216,7 @@ impl CacheDb {
                 file_size:  row.get::<_, i64>(4)? as u64,
                 session_id: row.get(5)?,
                 model:      row.get(12)?,
+                cwd:        row.get(13)?,
                 tokens,
                 tool_calls,
             })
